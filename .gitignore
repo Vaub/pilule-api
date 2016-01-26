@@ -1,0 +1,15 @@
+# Paket
+packages/
+paket.exe
+
+# FAKE
+.fake/
+
+# FSharp
+*Script.fsx
+build/
+deploy/
+
+# .NET
+bin/
+obj/
