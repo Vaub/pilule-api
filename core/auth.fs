@@ -9,8 +9,6 @@ module Auth =
     open Requests
 
     [<Literal>]
-    let host = "https://capsuleweb.ulaval.ca"
-    [<Literal>]
     let loginForm = "/pls/etprod8/twbkwbis.P_WWWLogin"
     [<Literal>]
     let loginEndpoint = "/pls/etprod8/twbkwbis.P_ValLogin"
@@ -26,7 +24,7 @@ module Auth =
         | Unknown
 
     let login session: LoginResponse =
-        let pingUrl = (host + loginForm)
+        let pingUrl = (Requests.host + loginForm)
 
         let extractSessionCookie body: SessionCookie option =
             match body with

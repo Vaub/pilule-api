@@ -45,6 +45,7 @@
     <Compile Include="capsule.fs" />
     <Compile Include="requests.fs" />
     <Compile Include="auth.fs" />
+    <Compile Include="schedule.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>
   <PropertyGroup>

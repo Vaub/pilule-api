@@ -1,9 +1,22 @@
-namespace Pilule.Core.Utils
+namespace Pilule.Core
 
-module Strings =
-  
-    open System.Text.RegularExpressions
+module Utils =
 
-    let (|FirstRegexGroup|_|) pattern input =
-        let m = Regex.Match(input,pattern) 
-        if (m.Success) then Some m.Groups.[1].Value else None
+    let orElse otherwise original =
+        match original with
+        | Some v -> v
+        | None -> otherwise
+
+    module Strings =
+    
+        open System.Text.RegularExpressions
+
+        let (|FirstRegexGroup|_|) pattern input =
+            let m = Regex.Match(input,pattern) 
+            if (m.Success) then Some m.Groups.[1].Value else None
+            
+        let (|ParseRegex|_|) regex str =
+            let m = Regex(regex).Match(str)
+            if m.Success
+            then Some (List.tail [ for x in m.Groups -> x.Value ])
+            else None

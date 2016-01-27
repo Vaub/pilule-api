@@ -3,7 +3,10 @@ namespace Pilule.Core
 module Requests =
 
     open FSharp.Data
-
+    
+    [<Literal>]
+    let host = "https://capsuleweb.ulaval.ca"
+    
     type RequestResult =
         | Response of HttpResponse
         | Error

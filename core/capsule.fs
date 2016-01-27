@@ -17,19 +17,40 @@ module Capsule =
     type Semester = { 
         season: Season
         year: Year 
-    }
+    } with 
+        static member toCapsuleFormat semester =
+            sprintf "%i%s" semester.year (Season.toMonth semester.season)
     and Season =
         | Autumn
         | Winter
-        | Summer
+        | Summer with 
+        static member toMonth season =
+            match season with
+            | Winter -> "01"
+            | Summer -> "05"
+            | Autumn -> "09"
     and Year = int
-
+    
+    type Schedule = {
+        semester: Semester
+        courses: seq<Course>
+    }
+    and Course = {
+        sign: string
+        name: string
+        teacher: string
+        schedule: seq<CourseSchedule>
+    }
+    and CourseSchedule = {
+        day: DayOfWeek
+        hour: DateTime
+    }
+    
     type Capsule = { 
         login: Session -> CapsuleResponse<Session>
         findSchedule: Session -> Schedule
         findSemesterSchedule: Semester -> Session -> Schedule 
     }
-    and Schedule = seq<string>
     and CapsuleResponse<'t> =
         | Success of 't
         | Error of ResponseError
