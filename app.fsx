@@ -15,7 +15,7 @@ open Pilule.Api.app
 let port = Sockets.Port.Parse "8083"
 let serverConfig = { 
     defaultConfig with
-        bindings = [ HttpBinding.mk HTTP IPAddress.Loopback port ] }
+        bindings = [ HttpBinding.mk HTTP IPAddress.Broadcast port ] }
 
 startWebServer serverConfig app
 
