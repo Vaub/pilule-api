@@ -27,6 +27,11 @@ Target "Build" (fun _ ->
         |> Log "AppBuild-Output: "
 )
 
+Target "Release" (fun _ ->
+    MSBuildRelease buildDir "Build" appReferences
+        |> Log "AppBuild-Output: "
+)
+
 Target "Deploy" (fun _ ->
     !! (buildDir + "/**/*.*")
         -- "*.zip"
