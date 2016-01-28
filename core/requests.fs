@@ -3,6 +3,7 @@ namespace Pilule.Core
 module Requests =
 
     open FSharp.Data
+    open Capsule
     
     [<Literal>]
     let host = "https://capsuleweb.ulaval.ca"

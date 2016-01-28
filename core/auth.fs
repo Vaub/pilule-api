@@ -7,6 +7,7 @@ module Auth =
     open Utils.Strings
 
     open Requests
+    open Capsule
 
     [<Literal>]
     let loginForm = "/pls/etprod8/twbkwbis.P_WWWLogin"

@@ -1,6 +1,5 @@
 namespace Pilule.Core
 
-[<AutoOpen>]
 module Capsule =
   
     open System
@@ -42,8 +41,16 @@ module Capsule =
         schedule: seq<CourseSchedule>
     }
     and CourseSchedule = {
+        room: CourseRoom
+        time: CourseTime
+    }
+    and CourseRoom =
+        | Room of string
+        | NoRoom
+    and CourseTime = {
         day: DayOfWeek
-        hour: DateTime
+        fromHour: TimeSpan
+        toHour: TimeSpan
     }
     
     type Capsule = { 
