@@ -7,8 +7,10 @@ module app =
     open Suave
     open Suave.Json
     open Suave.Filters
+    open Suave.Writers
     open Suave.Operators
     open Suave.Successful
+    open Suave.RequestErrors
     open Suave.Utils
     open Newtonsoft.Json
     
@@ -17,47 +19,32 @@ module app =
     open Pilule.Core.Capsule
     open Pilule.Core.Schedule
     
-    open Pilule.Api.Schedule
-    
-    let extractBasicInfo (token: string) =
-        let parts = token.Split (' ')
-        let enc = parts.[1].Trim()
-        let decoded = ASCII.decodeBase64 enc
-        let indexOfColon = decoded.IndexOf(':')
-        (decoded.Substring(0,indexOfColon), decoded.Substring(indexOfColon+1))
-    
-    let extractSession (ctx: HttpContext) =
-        let header = ctx.request.header "authorization"
-        match header with
-        | Choice1Of2 h ->
-            let (idul, pwd) = extractBasicInfo h
-            let session = { idul = idul; password = pwd; session = None }
-            login session
-        | _ -> LoginResponse.Error LoginError.Unknown
-            
-    let getSchedule semester (session: Session) =
-        findSchedule semester session.session
+    open Pilule.Api.Utils
+    open Pilule.Api.Course
     
     let schedulePart semester: WebPart = 
-        fun ctx ->
-            async {
-                let session = extractSession ctx
-                return!
-                    match session with
-                    | LoginResponse.Success s ->
-                        let semesterFound = extractSemester semester
-                        OK (JsonConvert.SerializeObject (getSchedule semesterFound s)) ctx
-                    | LoginResponse.Error e ->
-                        RequestErrors.FORBIDDEN (sprintf "%A" e) ctx
-            }
+        ulavalSession <|
+        fun session -> 
+            let semesterFound = extractSemester semester
+            OK (JsonConvert.SerializeObject (findSchedule semesterFound session.session)) >=> jsonType
     
     let schedule =
         choose
             [ GET >=> choose
                 [ pathScan "/schedule/%s" (fun s -> schedulePart s)
-                  path "/schedule" >=> (schedulePart "") ] ]
+                  path "/schedule" >=> schedulePart "" ] ]
     
-    let app = schedule
+    let course =
+        choose 
+            [ GET >=> choose
+                [ pathScan "/course/search/%s/%s" (fun (s, c) -> searchCourses s (Some c))
+                  pathScan "/course/search/%s" (fun s -> searchCourses s None) ] ]
+    
+    let app =
+        choose
+            [ schedule
+              course
+              NOT_FOUND "Endpoint does not exists" ]
     
     [<EntryPoint>]
     let main args =

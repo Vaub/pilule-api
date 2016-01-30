@@ -46,6 +46,7 @@
     <Compile Include="requests.fs" />
     <Compile Include="auth.fs" />
     <Compile Include="schedule.fs" />
+    <Compile Include="course.fs" />
     <None Include="Script.fsx" />
   </ItemGroup>
   <PropertyGroup>

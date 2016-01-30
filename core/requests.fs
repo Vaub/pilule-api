@@ -33,7 +33,10 @@ module Requests =
         match body with
         | Text t -> Some t
         | _ -> None
-
+        
+    let extractInnerText (node: HtmlNode) = 
+        node.InnerText().Trim()    
+    
     let runRequest request =
         try 
             Response (request())

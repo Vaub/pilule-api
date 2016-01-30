@@ -30,19 +30,28 @@ module Capsule =
             | Autumn -> "09"
     and Year = int
     
-    type Schedule = {
-        semester: Semester
-        courses: seq<Course>
-    }
-    and Course = {
-        sign: string
+    type Course = {
+        nrc: int
+        id: CourseId
         name: string
+        category: string
         teacher: string
+        credits: string
+    }
+    and CourseId = {
+        subject: string
+        number: string
+    }
+    
+    type Schedule = seq<CourseTimetable>
+    and CourseTimetable = {
+        course: Course
         schedule: seq<CourseSchedule>
     }
     and CourseSchedule = {
         room: CourseRoom
         time: CourseTime
+        duration: CourseDuration
     }
     and CourseRoom =
         | Room of string
@@ -52,16 +61,7 @@ module Capsule =
         fromHour: TimeSpan
         toHour: TimeSpan
     }
-    
-    type Capsule = { 
-        login: Session -> CapsuleResponse<Session>
-        findSchedule: Session -> Schedule
-        findSemesterSchedule: Semester -> Session -> Schedule 
+    and CourseDuration = {
+        fromDate: DateTime
+        toDate: DateTime
     }
-    and CapsuleResponse<'t> =
-        | Success of 't
-        | Error of ResponseError
-    and ResponseError =
-        | CouldNotContactCapsule
-        | WrongIdentifiers
-        | Unknown of string

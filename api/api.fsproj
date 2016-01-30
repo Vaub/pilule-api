@@ -51,7 +51,8 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="schedule.fs" />
+    <Compile Include="utils.fs" />
+    <Compile Include="course.fs" />
     <Compile Include="api.fs" />
   </ItemGroup>
   <PropertyGroup>

@@ -12,39 +12,54 @@ module Schedule =
     
     let scheduleEndpoint = "/pls/etprod8/bwskfshd.P_CrseSchdDetl"
     
-    let isACourseInfoNode (node: HtmlNode) =
+    let internal isACourseInfoNode (node: HtmlNode) =
         let captions =
             node.Descendants ["caption"]
-            |> Seq.filter (fun n -> n.InnerText() <> "Horaires prévus")
+            |> Seq.filter (fun n -> (extractInnerText n) <> "Horaires prévus")
         not (Seq.isEmpty captions)
     
-    let isACourseScheduleNode (node: HtmlNode) =
+    let internal isACourseScheduleNode (node: HtmlNode) =
         let captions =
             node.Descendants ["caption"]
-            |> Seq.filter (fun n -> n.InnerText() = "Horaires prévus")
+            |> Seq.filter (fun n -> (extractInnerText n) = "Horaires prévus")
         not (Seq.isEmpty captions)
     
-    let extractCourseInfo (node: HtmlNode) =
+    let internal extractCourseDetail name (rows: seq<HtmlNode>) =
+        let checkDetailNode (n: HtmlNode) =
+            (n.Descendants ["th"] |> Seq.head |> extractInnerText).Contains name
+        
+        let extractDetail (n: HtmlNode) =
+            (n.Descendants ["td"] |> Seq.head |> extractInnerText)
+        
+        rows
+        |> Seq.filter (fun r -> checkDetailNode r)
+        |> Seq.tryHead
+        |> Option.map (fun r -> extractDetail r)
+    
+    let internal extractCourseInfo (node: HtmlNode) =
         let caption = node.Descendants ["caption"] |> Seq.head
         let rows = node.Descendants ["tr"]
         
-        let title =
+        let (name, id, category) =
             match caption.InnerText() with
-            | ParseRegex "(.*) - ([A-Z]{3,4} [A-Z0-9]{3,5}) - (.*)" [n; s; t]
-                -> (n, s)
-            | _ -> ("", "")
-            
-        let teacher =
-            rows 
-            |> Seq.filter (fun r ->
-                (r.Descendants ["th"] |> Seq.head).InnerText().Contains "Professeur:")
-            |> Seq.tryHead
-            |> Option.map (fun r -> (r.Descendants ["td"] |> Seq.head).InnerText().Trim())
-            |> orElse ""
+            | ParseRegex "(.*) - ([A-Z]{3,4}) ([A-Z0-9]{3,5}) - (.*)" [name; subject; number; category]
+                -> (name, { subject = subject; number = number }, category)
+            | _ -> ("", { subject = ""; number = "" }, "")
         
-        { sign = (snd title); name = (fst title); teacher = teacher; schedule = []  }
+        let nrc = 
+            extractCourseDetail "NRC:" rows
+            |> Option.map (fun n -> int n)
+            |> orElse 0
+        
+        let credits =
+            extractCourseDetail "Crédits:" rows |> orElse ""
+        
+        let teacher =
+            extractCourseDetail "Professeur:" rows |> orElse ""
+        
+        { nrc = nrc; id = id; name = name; category = category; credits = credits; teacher = teacher; }
     
-    let extractCourseSchedule (node: HtmlNode) =
+    let internal extractCourseSchedule (node: HtmlNode) =
         let rows = node.Descendants ["tr"] |> Seq.skip 1
         
         let extractRoom (n: HtmlNode) =
@@ -57,7 +72,7 @@ module Schedule =
                 match timeNode.InnerText().Trim() with
                 | ParseRegex "([0-9]{1,2}):([0-9]{1,2}) - ([0-9]{1,2}):([0-9]{1,2})" [h1; m1; h2; m2]
                     -> (TimeSpan(int h1, int m1, 0), TimeSpan(int h2, int m2, 0))
-                | _ -> (TimeSpan.MinValue, TimeSpan.MinValue)
+                | _ -> (TimeSpan(-1,0,0), TimeSpan(-1,0,0))
             let day =
                 match dayNode.InnerText().Trim().ToLower() with
                 | "l" -> DayOfWeek.Monday
@@ -68,11 +83,25 @@ module Schedule =
                 | _ -> DayOfWeek.Sunday
             
             { fromHour = (fst time); toHour = (snd time); day = day }
-            
+        
+        let extractDuration (n: HtmlNode): CourseDuration =
+            let (fromDate, toDate) =
+                match n.InnerText().Trim() with
+                | ParseRegex "([0-9]{4}\/[0-9]{2}\/[0-9]{2}) - ([0-9]{4}\/[0-9]{2}\/[0-9]{2})" [fromText; toText]
+                    -> (DateTime.ParseExact(fromText, "yyyy/MM/dd", System.Globalization.CultureInfo.InvariantCulture),
+                        DateTime.ParseExact(toText, "yyyy/MM/dd", System.Globalization.CultureInfo.InvariantCulture))
+                | _ -> (DateTime.MinValue.ToUniversalTime(), DateTime.MinValue.ToUniversalTime())
+        
+            { fromDate = fromDate; toDate = toDate }
+        
         let extractCourseTimes (n: HtmlNode) =
             let columns = n.Descendants ["td"]
-            let (room, time, day) = (Seq.item 3 columns, Seq.item 1 columns, Seq.item 2 columns)
-            { room = extractRoom room; time = (extractTime time day) }
+            let (room, time, day, duration) = (
+                Seq.item 3 columns, 
+                Seq.item 1 columns, 
+                Seq.item 2 columns,
+                Seq.item 4 columns )
+            { room = extractRoom room; time = extractTime time day; duration = extractDuration duration }
             
         rows |> Seq.map (fun r -> extractCourseTimes r)
     
@@ -91,7 +120,7 @@ module Schedule =
         
         seq {
             for i = 0 to (Seq.length courseNodes) - 1 do
-                yield { Seq.item i courseNodes with schedule = Seq.item i scheduleNode }
+                yield { course = courseNodes |> Seq.item i; schedule = scheduleNode |> Seq.item i  }
         }
     
     let findSchedule semester session: Schedule =
@@ -109,12 +138,10 @@ module Schedule =
                     url = scheduleUrl, httpMethod = HttpMethod.Post,
                     body = FormValues [("term_in", semesterParam)],
                     cookies = [("SESSID", sessid)])
-        let courses = 
-            match runRequest scheduleRequest with
-            | Response r -> 
-                extractBody r.Body
-                |> Option.map (fun b -> parseSchedule b) 
-                |> orElse Seq.empty
-            | _ -> Seq.empty
-        
-        { semester = semester; courses = courses }
+                    
+        match runRequest scheduleRequest with
+        | Response r -> 
+            extractBody r.Body
+            |> Option.map (fun b -> parseSchedule b) 
+            |> orElse Seq.empty
+        | _ -> Seq.empty
