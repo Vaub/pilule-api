@@ -3,6 +3,22 @@
 Étant donné que Pilule (wrapper humain de Capsule d'ULaval) a tiré sa révérence, j'ai décidé d'essayé de créer un petit API pour accéder à capsule.
 Peut-être que ça n'aboutiera à rien, mais si j'ai du temps je vais travailler dessus.
 
+> Prototypage : ce projet est présentement en phase de prototypage pour tester la faisabilité et les technologies (mon premier project F#), la stabilité n'est pas garantie :)
+
+## API
+Voir le fichier `api.fs` dans /api pour une vue d'ensemble des points d'entrés
+
+### Authentication : Basic Authentication
+Utilisez votre idul comme username, rien n'est sauvegarder côté serveur
+```
+GET /schedule                         # récupérer son horaire de session
+GET /schedule/w2015                   # récupérer son horaire de différences session, [w/s/a]0000
+
+GET /course/search/GLO                # recherche de cours "GLO" cette session
+GET /course/search/GLO/1901           # recherche du cours "GLO-1901" cette session
+GET /course/search/GLO?name=pratique  # recherche de cours "GLO" dont le nom contient "pratique"
+```
+
 ## FSharp
 J'ai décidé d'essayer F# comme langage pour le projet pour essayer un langage fonctionnel :)
 
