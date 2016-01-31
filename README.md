@@ -8,6 +8,12 @@ Peut-être que ça n'aboutiera à rien, mais si j'ai du temps je vais travailler
 ## API
 Voir le fichier `api.fs` dans /api pour une vue d'ensemble des points d'entrés
 
+### Try it
+It might be down from time to time, but you can try it at
+```
+vaub0039.vincentaube.net:8083
+```
+
 ### Authentication : Basic Authentication
 Utilisez votre idul comme username, rien n'est sauvegarder côté serveur
 ```
