@@ -10,12 +10,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{4D13BF
 EndProject
 Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "core", "core\core.fsproj", "{99745828-ACF5-4B1B-8301-78F8345EB1CC}"
 EndProject
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "api", "api\api.fsproj", "{262CF071-B00A-4D82-B0CB-E49A3596419D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{262CF071-B00A-4D82-B0CB-E49A3596419D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{262CF071-B00A-4D82-B0CB-E49A3596419D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{262CF071-B00A-4D82-B0CB-E49A3596419D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{262CF071-B00A-4D82-B0CB-E49A3596419D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{99745828-ACF5-4B1B-8301-78F8345EB1CC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{99745828-ACF5-4B1B-8301-78F8345EB1CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{99745828-ACF5-4B1B-8301-78F8345EB1CC}.Release|Any CPU.ActiveCfg = Release|Any CPU

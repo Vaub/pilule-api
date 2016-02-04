@@ -135,7 +135,8 @@ module Course =
             | Some b when b.Contains "Aucun cours ne correspond à vos critères de recherche" ->
                 seq []
             | Some b ->
-                parseSearchResults (HtmlDocument.Parse b)
+                let parsedDocument = HtmlDocument.Parse b
+                parseSearchResults parsedDocument
             | None ->
                 seq []
         | Error -> seq []
