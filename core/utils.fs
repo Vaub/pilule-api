@@ -20,3 +20,13 @@ module Utils =
             if m.Success
             then Some (List.tail [ for x in m.Groups -> x.Value ])
             else None
+            
+    module Computation = 
+        
+        type MaybeBuilder() =
+            member this.Bind(x, f) =
+                match x with
+                | None -> None
+                | Some v -> f v
+            member this.Return(x) = Some x
+        let maybe = new MaybeBuilder()

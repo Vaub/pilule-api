@@ -1,0 +1,14 @@
+﻿<Properties StartupItem="api/api.fsproj">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="core/course.fs">
+    <Files>
+      <File FileName="api/api.fs" Line="1" Column="1" />
+      <File FileName="core/ical.fs" Line="1" Column="1" />
+      <File FileName="core/course.fs" Line="138" Column="1" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+</Properties>

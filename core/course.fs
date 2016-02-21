@@ -1,142 +1,215 @@
 namespace Pilule.Core
-
-module Course =
     
     open FSharp.Data
+    open FSharp.Collections.ParallelSeq
     
     open Capsule
-    open Requests
-    open Utils
+    open Utils.Strings
     
-    [<Literal>]
-    let courseEndpoint = "/pls/etprod8/bwskfcls.P_GetCrse_Advanced"
+    module Course =
     
-    let defaultSubjects = seq [|"ACT";"AEE";"ADM";"ADS";"APR";"AGC";"AGF";"AGN";"ALL";"AME";"ANM";"ANG";"ANL";"ANT";"ARA";"ARL";"ARC";"GAD";"ARD";"ANI";"ART";"ARV";"ASR";"BCM";"BCX";"BIF";"BIO";"BMO";"BVG";"BPH";"CAT";"CHM";"CHN";"CIN";"COM";"CTB";"CNS";"CSO";"CRL";"CRI";"DES";"DDU";"DVE";"DRI";"DID";"DRT";"ERU";"ECN";"EDC";"EPS";"ENP";"ENS";"EER";"ENT";"ENV";"EPM";"EGN";"ERG";"ESP";"ESG";"ETH";"EFN";"ETN";"EAN";"ETI";"PTR";"GPL";"EXD";"FOR";"FIS";"FPT";"FRN";"FLE";"FLS";"GAA";"GAE";"GAL";"GCH";"GCI";"GPG";"GEX";"GEL";"GSC";"GGL";"GIN";"GIF";"GLO";"GMC";"GML";"GMN";"GPH";"GGR";"GLG";"GMT";"GSO";"GRH";"GSE";"GSF";"GIE";"GUI";"GRC";"HST";"HAR";"IFT";"IED";"ITL";"JAP";"KIN";"LMO";"LOA";"LAT";"LNG";"LIT";"MNG";"MRK";"MAT";"MED";"MDD";"MDX";"MEV";"MQT";"MET";"MCB";"MSL";"MUS";"NRB";"NUT";"OCE";"OPV";"ORT";"PST";"PUN";"PHA";"PHC";"PHI";"PHS";"PHT";"PHY";"PLG";"PFP";"POR";"PSA";"PSE";"PSY";"PPG";"RLT";"RUS";"SAT";"SAC";"POL";"SAN";"SBM";"SCR";"SBO";"SIN";"STC";"STA";"SVS";"SEX";"SOC";"SLS";"STT";"SIO";"TEN";"THT";"THL";"TCF";"TRE";"TXM";"TRD";"TED"|]
-    
-    type SearchParam = {
-        semester: Semester
-        mode: SearchMode
-    }
-    and SearchMode =
-        | Sign of CourseSubject * string
-        | Title of seq<CourseSubject> * string
-    and CourseSubject = string
-    
-    let internal createSearchRequest formData sessionToken =
-        fun unit ->
-            Http.Request (
-                url = (Requests.host + courseEndpoint),
-                httpMethod = HttpMethod.Post,
-                body = FormValues formData,
-                cookies = [("SESSID", sessionToken)]
-            )
-    
-    let internal parseSearchResults (n: HtmlDocument) =
-        let parseRow (r: HtmlNode) =
-            let columns = r.Descendants ["td"] |> Seq.map (fun c -> c.InnerText().Trim())
+        type Course = {
+            Nrc: int
+            Sign: CourseSign
+            Name: string
+            Category: string
+            Teacher: string
+            Credits: string
+        }
+        and CourseSign = {
+            Subject: CourseSubject
+            Number: CourseNumber
+        } with
+            override x.ToString () = sprintf "%s-%s" x.Subject x.Number 
+        and CourseSubject = string
+        and CourseNumber = string
+        
+        type SearchParameters = {
+            Semester: Semester
+            Mode: SearchMode
+        }
+        and SearchMode =
+            | BySign of CourseSign
+            | ByName of NameSearch * seq<CourseSubject> with
+            member x.ListSubjects () =
+                match x with
+                | BySign s -> seq [s.Subject]
+                | ByName (n, s) -> s
+        and NameSearch = string
+        
+        type RequestConfiguration = {
+            Host: string
+            SessionToken: string
+        }
+        
+        type CourseFetcher = 
+            SearchParameters -> RequestConfiguration -> Async<HtmlDocument option>
+        and CourseParser = 
+            HtmlDocument -> Course seq
             
-            let extractCourseId subject number =
-                { subject = subject; number = number }
-
-            { 
-                nrc = int (Seq.item 1 columns)
-                id = extractCourseId (Seq.item 2 columns) (Seq.item 3 columns)
-                name = columns |> Seq.item 7
-                category = columns |> Seq.item 4
-                teacher = columns |> Seq.item 19
-                credits = columns |> Seq.item 6  
-            }
+        type CourseFinder = {
+            Fetcher: CourseFetcher
+            Parser: CourseParser
+        } with
+            member x.FindCoursesAsync s c = 
+                async {
+                    let! document = x.Fetcher s c
+                    return
+                        match document with
+                        | Some d -> x.Parser d
+                        | None -> seq []
+                }
+            member x.FindCourses s c =
+                x.FindCoursesAsync s c |> Async.RunSynchronously
             
-    
-        let table =
-            n.Descendants ["table"]
-            |> Seq.filter (fun t -> t.HasClass "datadisplaytable")
-            |> Seq.item 0
+        
+        module Parser = 
             
-        table.Descendants ["tr"]
-        |> Seq.filter (fun r -> 
-            (r.Descendants ["th"] |> Seq.isEmpty) && 
-            (r.Descendants ["td"] |> Seq.item 0).InnerText().Trim() <> "")
-        |> Seq.map (fun r -> parseRow r)
-    
-    let findCourses searchParam sessionToken =
-        
-        let session =
-            match sessionToken with
-            | Some t -> t
-            | None -> failwith "Could not find session token!"
-        
-        let subjects = 
-            match searchParam.mode with
-            | Sign (subject, _) -> seq [("sel_subj", subject)]
-            | Title (subjects, _) ->
-                let subjectsToAdd = 
-                    if not (Seq.isEmpty subjects) then 
-                        subjects |> Seq.map (fun s -> s.ToUpper())
-                    else 
-                        defaultSubjects
-                seq { for s in subjects do yield ("sel_subj", s) }
-        
-        let title =
-            match searchParam.mode with
-            | Sign (_, num) -> ""
-            | Title (_, title) -> title
-        
-        let courseNb =
-            match searchParam.mode with
-            | Sign (_, num) -> num.ToString()
-            | _ -> ""
-        
-        let capsuleParams =
-            Seq.append (
-                seq [
-                    ("term_in", Semester.toCapsuleFormat searchParam.semester)
-                    ("rsts","dummy")
-                    ("crn","dummy")
-                    ("sel_subj","dummy")
-                    ("sel_day","dummy")
-                    ("sel_schd","dummy")
-                    ("sel_insm","dummy")
-                    ("sel_camp","dummy")
-                    ("sel_levl","dummy")
-                    ("sel_sess","dummy")
-                    ("sel_instr","dummy")
-                    ("sel_ptrm","dummy")
-                    ("sel_attr","dummy")
-                    ("sel_crse", courseNb)
-                    ("sel_title", title)
-                    ("sel_schd","%")
-                    ("sel_from_cred","")
-                    ("sel_to_cred","")
-                    ("sel_camp","%")
-                    ("sel_levl","%")
-                    ("sel_ptrm","%")
-                    ("sel_dunt_unit","")
-                    ("sel_dunt_code","AN")
-                    ("call_value_in","")
-                    ("sel_instr","%")
-                    ("sel_sess","%")
-                    ("sel_attr","%")
-                    ("begin_hh","0")
-                    ("begin_mi","0")
-                    ("begin_ap","x")
-                    ("end_hh","0")
-                    ("end_mi","0")
-                    ("end_ap","x")
-                    ("path","1")
-                    ("SUB_BTN","Recherche de groupe")
-            ]) <| subjects
-        
-        let request = createSearchRequest capsuleParams session
-        match runRequest request with
-        | Response r -> 
-            let body = extractBody r.Body
-            match body with
-            | Some b when b.Contains "Aucun cours ne correspond à vos critères de recherche" ->
-                seq []
-            | Some b ->
-                let parsedDocument = HtmlDocument.Parse b
-                parseSearchResults parsedDocument
-            | None ->
-                seq []
-        | Error -> seq []
+            open Utils.Computation
+            
+            let internal parseCourseNode (r: HtmlNode) =
+                let columns = 
+                    r.Descendants ["td"] 
+                    |> Seq.map (fun c -> c.InnerText().Trim())
+                
+                maybe {
+                    let! nrc =          columns |> Seq.tryItem 1
+                    let! signSubject =  columns |> Seq.tryItem 2
+                    let! signNumber =   columns |> Seq.tryItem 3
+                    let! name =         columns |> Seq.tryItem 7
+                    let! category =     columns |> Seq.tryItem 4
+                    let! teacher =      columns |> Seq.tryItem 19
+                    let! credits =      columns |> Seq.tryItem 6
+                    
+                    return {
+                        Nrc = int nrc
+                        Sign = { Subject = signSubject; Number = signNumber }
+                        Name = name
+                        Category = category
+                        Teacher = teacher
+                        Credits = credits
+                    }
+                }
+            
+            let internal findCourseTable (d: HtmlDocument) =
+                d.Descendants ["table"]
+                |> Seq.filter (fun r -> r.HasClass "datadisplaytable")
+                |> Seq.tryItem 0
+            
+            let inline internal isNodeACourseRow (n: HtmlNode) =
+                (n.Descendants ["th"] |> Seq.isEmpty)
+                && 
+                match n.Descendants ["td"] |> Seq.tryItem 0 with
+                    | Some c -> c.InnerText().Trim() <> ""
+                    | None -> false
+            
+            let internal findCourseRows (n: HtmlNode) =
+                n.Descendants ["tr"]
+                |> Seq.filter (fun r -> isNodeACourseRow r)
+            
+            let capsuleParser input: Course seq = 
+                match findCourseTable input with
+                | Some n ->
+                    findCourseRows n
+                    |> PSeq.map (fun c -> parseCourseNode c)
+                    |> Seq.choose id
+                | None -> Seq.empty
+                
+            
+        module Query =
+            
+            [<Literal>]
+            let endpoint = "/pls/etprod8/bwskfcls.P_GetCrse_Advanced"
+            
+            type Response =
+                | Response of HttpResponse
+                | Error
+            
+            let internal createRequestParameters p =
+                let courseSubjects =
+                    p.Mode.ListSubjects ()
+                    |> Seq.map (fun s -> ("sel_subj", s))
+                let nameToSearch =
+                    match p.Mode with
+                    | ByName (n, _) -> n
+                    | _ -> ""
+                let courseNumber = 
+                    match p.Mode with
+                    | BySign s -> s.Number
+                    | _ -> ""
+                
+                Seq.append
+                <| seq [("term_in", Semester.toCapsuleFormat p.Semester)
+                        ("rsts","dummy")
+                        ("crn","dummy")
+                        ("sel_subj","dummy")
+                        ("sel_day","dummy")
+                        ("sel_schd","dummy")
+                        ("sel_insm","dummy")
+                        ("sel_camp","dummy")
+                        ("sel_levl","dummy")
+                        ("sel_sess","dummy")
+                        ("sel_instr","dummy")
+                        ("sel_ptrm","dummy")
+                        ("sel_attr","dummy")
+                        ("sel_crse", courseNumber)
+                        ("sel_title", nameToSearch)
+                        ("sel_schd","%")
+                        ("sel_from_cred","")
+                        ("sel_to_cred","")
+                        ("sel_camp","%")
+                        ("sel_levl","%")
+                        ("sel_ptrm","%")
+                        ("sel_dunt_unit","")
+                        ("sel_dunt_code","AN")
+                        ("call_value_in","")
+                        ("sel_instr","%")
+                        ("sel_sess","%")
+                        ("sel_attr","%")
+                        ("begin_hh","0")
+                        ("begin_mi","0")
+                        ("begin_ap","x")
+                        ("end_hh","0")
+                        ("end_mi","0")
+                        ("end_ap","x")
+                        ("path","1")
+                        ("SUB_BTN","Recherche de groupe") ]
+                <| courseSubjects
+            
+            let internal fetchCourseDocument p c =
+                fun () ->
+                    Http.AsyncRequest (
+                        url = (c.Host + endpoint),
+                        httpMethod = HttpMethod.Post,
+                        body = FormValues p,
+                        cookies = [("SESSID", c.SessionToken)]
+                    )
+            
+            let internal runRequestAsync r =
+                async {
+                    try
+                        let! response = r()
+                        return Response response
+                    with
+                        ex -> return Error
+                }
+            
+            let internal extractDocument r =
+                match r.Body with
+                | Text b when b.Contains "Aucun cours ne correspond à vos critères de recherche" ->
+                    None
+                | Text b ->
+                    Some (HtmlDocument.Parse b)
+                | _ -> None
+            
+            let queryCapsuleAsync searchParameters config = 
+                let parameters = searchParameters |> createRequestParameters
+                async {
+                    let request = fetchCourseDocument parameters config
+                    let! response = request |> runRequestAsync
+                    return
+                        match response with
+                        | Response r -> r |> extractDocument
+                        | Error -> None        
+                }
+                
