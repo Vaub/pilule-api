@@ -30,38 +30,7 @@ module Capsule =
             | Autumn -> "09"
     and Year = int
     
-    type Course = {
-        nrc: int
-        id: CourseId
-        name: string
-        category: string
-        teacher: string
-        credits: string
-    }
-    and CourseId = {
-        subject: string
-        number: string
-    }
-    
-    type Schedule = seq<CourseTimetable>
-    and CourseTimetable = {
-        course: Course
-        schedule: seq<CourseSchedule>
-    }
-    and CourseSchedule = {
-        room: CourseRoom
-        time: CourseTime
-        duration: CourseDuration
-    }
-    and CourseRoom =
-        | Room of string
-        | NoRoom
-    and CourseTime = {
-        day: DayOfWeek
-        fromHour: TimeSpan
-        toHour: TimeSpan
-    }
-    and CourseDuration = {
-        fromDate: DateTime
-        toDate: DateTime
+    type RequestConfiguration = {
+        Host: string
+        SessionToken: string
     }

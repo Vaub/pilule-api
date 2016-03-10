@@ -9,20 +9,24 @@ namespace Pilule.Core
     module Course =
     
         type Course = {
-            Nrc: int
+            Nrc: Nrc
             Sign: CourseSign
             Name: string
-            Category: string
-            Teacher: string
-            Credits: string
+            Category: CourseCategory
+            Teacher: CourseTeacher
+            Credits: CourseCredits
         }
         and CourseSign = {
             Subject: CourseSubject
             Number: CourseNumber
         } with
             override x.ToString () = sprintf "%s-%s" x.Subject x.Number 
+        and Nrc = int
         and CourseSubject = string
         and CourseNumber = string
+        and CourseCategory = string
+        and CourseTeacher = string
+        and CourseCredits = string
         
         type SearchParameters = {
             Semester: Semester
@@ -36,11 +40,6 @@ namespace Pilule.Core
                 | BySign s -> seq [s.Subject]
                 | ByName (n, s) -> s
         and NameSearch = string
-        
-        type RequestConfiguration = {
-            Host: string
-            SessionToken: string
-        }
         
         type CourseFetcher = 
             SearchParameters -> RequestConfiguration -> Async<HtmlDocument option>
@@ -116,14 +115,12 @@ namespace Pilule.Core
                 | None -> Seq.empty
                 
             
-        module Query =
+        module Fetcher =
+            
+            open Requests
             
             [<Literal>]
             let endpoint = "/pls/etprod8/bwskfcls.P_GetCrse_Advanced"
-            
-            type Response =
-                | Response of HttpResponse
-                | Error
             
             let internal createRequestParameters p =
                 let courseSubjects =
@@ -185,31 +182,11 @@ namespace Pilule.Core
                         cookies = [("SESSID", c.SessionToken)]
                     )
             
-            let internal runRequestAsync r =
-                async {
-                    try
-                        let! response = r()
-                        return Response response
-                    with
-                        ex -> return Error
-                }
-            
-            let internal extractDocument r =
-                match r.Body with
-                | Text b when b.Contains "Aucun cours ne correspond à vos critères de recherche" ->
-                    None
-                | Text b ->
-                    Some (HtmlDocument.Parse b)
-                | _ -> None
-            
-            let queryCapsuleAsync searchParameters config = 
+            let capsuleAsyncFetcher searchParameters config = 
                 let parameters = searchParameters |> createRequestParameters
                 async {
                     let request = fetchCourseDocument parameters config
                     let! response = request |> runRequestAsync
-                    return
-                        match response with
-                        | Response r -> r |> extractDocument
-                        | Error -> None        
+                    return extractResponseBody response      
                 }
                 

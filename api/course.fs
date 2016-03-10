@@ -31,7 +31,7 @@ module Course =
     }
     
     let finder = {
-        Fetcher = Query.queryCapsuleAsync
+        Fetcher = Fetcher.capsuleAsyncFetcher
         Parser = Parser.capsuleParser
     }
     

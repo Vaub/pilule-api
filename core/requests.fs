@@ -5,55 +5,33 @@ module Requests =
     open FSharp.Data
     open Capsule
     
+    open Utils.Computation
+    
     [<Literal>]
     let host = "https://capsuleweb.ulaval.ca"
     
-    type RequestResult =
-        | Response of HttpResponse
-        | Error
-
-    type MaybeBuilder() =
-        member this.Bind(x, f) =
-            match x with
-            | None -> None
-            | Some v -> f v
-        member this.Return(x) = Some x
-    let maybe = new MaybeBuilder()
-
     type RequestBuilder() =
         member this.Bind(x, f) =
             match x with
-            | Error -> Error
-            | Response r -> f r
-        member this.Return(x) = Response x
-        member this.Delay(f) = f()
+            | None -> None
+            | Some r -> f r
+        member this.Return(x) = Some x
+        member this.Delay(f) = f
     let requests = new RequestBuilder()
-
-    let extractBody body =
-        match body with
-        | Text t -> Some t
-        | _ -> None
-        
-    let extractInnerText (node: HtmlNode) = 
-        node.InnerText().Trim()    
     
-    let runRequest request =
-        try 
-            Response (request())
-        with 
-            ex -> 
-                printfn "Error running request: %A" (ex.Message)
-                Error
-
-    let inline pingRequest host = 
-        fun unit -> Http.Request (url = host, httpMethod = HttpMethod.Get)
-
-    let ping host =
-        let pingUrl = host
-        let request = pingRequest host
-
-        match (runRequest request) with
-        | Response r -> 
-        printfn "Status for %A is %A" host r.StatusCode
-        r.StatusCode = 200
-        | Error -> false
+    let extractResponseBody r =
+        match r with
+        | Some response -> 
+            match response.Body with
+            | Text t -> Some t
+            | _ -> None
+        | None -> None
+                
+    let runRequestAsync r =
+        async {
+            try
+                let! response = r ()
+                return Some response
+            with
+                ex -> return None
+        }
